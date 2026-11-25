@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESCAPE THE TIME LOOP: AETHER-9</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23050812' stroke='%2300f0ff' stroke-width='4'/%3E%3Ctext x='32' y='41' text-anchor='middle' font-size='26' font-family='monospace' font-weight='bold' fill='%2300ff9d'%3E30%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/src/styles/main.css" />
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <!-- Time Rewind / Damage Flash Overlay -->
+  <div id="rewind-overlay" class="overlay-fx hidden">
+    <div class="rewind-ring"></div>
+    <div id="rewind-label" class="rewind-label">TEMPORAL REWIND INITIATED</div>
+  </div>
+
+  <!-- Low-Time Warning Vignette -->
+  <div id="danger-vignette" class="danger-vignette hidden"></div>
+
+  <!-- In-Game Sci-Fi HUD -->
+  <div id="hud" class="hud hidden">
+    <!-- Top Center: Unified Slim Loop + Countdown Bar -->
+    <div class="hud-top-center">
+      <div id="timer-box" class="timer-pill">
+        <div class="pill-side">
+          <span class="badge-label">ATTEMPT</span>
+          <span id="loop-count" class="badge-value">1/3</span>
+        </div>
+        <div class="pill-main">
+          <div id="timer-value" class="timer-value">30.0</div>
+          <div class="timer-bar-track">
+            <div id="timer-bar-fill" class="timer-bar-fill"></div>
+          </div>
+        </div>
+        <div class="pill-side">
+          <span class="badge-label">TIME</span>
+          <span id="total-time" class="badge-value">00:00</span>
+        </div>
+      </div>
+      <div id="mission-instruction" class="mission-strip">
+        Explore Sectors A–H to gather clues. Beware 4 decoy rooms!
+      </div>
+    </div>
+
+    <!-- Top Left: Compact Memory Core + In-Hand Gear Card -->
+    <div class="hud-panel hud-memory">
+      <div class="panel-header">
+        <span class="dot-pulse"></span>
+        MEMORY &amp; HANDS
+      </div>
+      <ul class="memory-list">
+        <li id="mem-telemetry" class="mem-item locked">
+          <span class="mem-icon">◎</span>
+          <div class="mem-text">
+            <span class="mem-title">Telemetry</span>
+            <span id="mem-telemetry-desc" class="mem-desc">Sectors A–H</span>
+          </div>
+          <span class="mem-status">PENDING</span>
+        </li>
+        <li id="mem-code" class="mem-item locked">
+          <span class="mem-icon">◎</span>
+          <div class="mem-text">
+            <span class="mem-title">Security Code</span>
+            <span id="mem-code-desc" class="mem-desc">Laser Wing</span>
+          </div>
+          <span class="mem-status">PENDING</span>
+        </li>
+        <li id="mem-keycard" class="mem-item locked">
+          <span class="mem-icon">◎</span>
+          <div class="mem-text">
+            <span class="mem-title">Keycard</span>
+            <span id="mem-keycard-desc" class="mem-desc">Sectors A–H</span>
+          </div>
+          <span class="mem-status">PENDING</span>
+        </li>
+        <li id="mem-blastdoor" class="mem-item locked">
+          <span class="mem-icon">◎</span>
+          <div class="mem-text">
+            <span class="mem-title">Blast Door</span>
+            <span class="mem-desc">North Hub</span>
+          </div>
+          <span class="mem-status">LOCKED</span>
+        </li>
+      </ul>
+
+      <div id="security-code-chip" class="code-chip hidden">
+        <span>CODE:</span>
+        <strong id="hud-code-value">----</strong>
+      </div>
+
+      <div class="hands-mini-row">
+        <div id="gear-scanner" class="gear-pill empty" title="Left Hand: Holo-Scanner">
+          <span>📡</span><span class="gear-state">L</span>
+        </div>
+        <div id="gear-cipher" class="gear-pill empty" title="Left Wrist: Security Cipher">
+          <span>🔐</span><span id="gear-cipher-state" class="gear-state">W</span>
+        </div>
+        <div id="gear-keycard" class="gear-pill empty" title="Right Hand: Quantum Keycard">
+          <span>💳</span><span class="gear-state">R</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Right: Circular Tactical Radar + Compact Action Buttons -->
+    <div class="hud-top-right">
+      <div id="hud-minimap-box" class="radar-circle-wrap" title="Click or press [M] for Full Station Map">
+        <canvas id="minimap-canvas" width="166" height="166"></canvas>
+        <div class="radar-tag-pill">
+          <span>S→E</span>
+          <span id="echo-badge" class="echo-badge hidden">ECHO</span>
+        </div>
+      </div>
+
+      <div class="hud-panel hud-utility">
+        <div class="room-indicator">
+          <span id="current-room" class="room-name">CRYO-POD BAY [S]</span>
+        </div>
+        <div class="hud-btn-row">
+          <button id="btn-hud-rewind" class="hud-action-btn" title="Manual Rewind (R)">↺ R</button>
+          <button id="btn-hud-map" class="hud-action-btn hud-map-btn" title="Full Map (M)">🗺 M</button>
+          <button id="btn-hud-fullscreen" class="hud-action-btn hud-fs-btn" title="Toggle Fullscreen (F)">⛶ F</button>
+          <button id="btn-hud-audio" class="hud-action-btn hud-help-btn" title="Mute / Unmute Music &amp; SFX">🔊</button>
+          <button id="btn-hud-briefing" class="hud-action-btn hud-help-btn" title="How to Play">?</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Center: Toast Notification & Interaction Prompt -->
+    <div class="hud-bottom-center">
+      <div id="toast-banner" class="toast-banner hidden"></div>
+      <div id="interact-prompt" class="interact-prompt hidden">
+        <kbd>E</kbd> <span id="interact-text">Interact</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cinematic Flight Telemetry Bar (Shown ONLY during Rocket Takeoff) -->
+  <div id="launch-hud" class="launch-hud hidden">
+    <div class="launch-pill">
+      <div class="launch-col">
+        <span class="badge-label">FLIGHT STATUS</span>
+        <span id="launch-stage" class="launch-stage-val">BOARDING COCKPIT</span>
+      </div>
+      <div class="launch-divider"></div>
+      <div class="launch-col">
+        <span class="badge-label">ALTITUDE</span>
+        <span id="launch-alt" class="launch-num">0.0 km</span>
+      </div>
+      <div class="launch-divider"></div>
+      <div class="launch-col">
+        <span class="badge-label">VELOCITY</span>
+        <span id="launch-vel" class="launch-num">0.00 km/s</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Tactical Station Map Pop-up ([M] or Click Circular Radar) -->
+  <div id="map-modal" class="modal-screen hidden">
+    <div class="modal-card map-modal-card">
+      <div class="station-tag">AETHER-9 // TACTICAL STATION MAP</div>
+      <h2 class="map-modal-title">ALL SECTORS VISIBLE — START [S] TO ESCAPE [E]</h2>
+      <canvas id="fullmap-canvas" width="420" height="520"></canvas>
+      <div class="map-legend map-modal-legend">
+        <span><i class="leg-dot leg-start"></i>S Start</span>
+        <span><i class="leg-dot leg-pod"></i>E Escape</span>
+        <span><i class="leg-dot leg-you"></i>You</span>
+        <span><i class="leg-dot leg-laser"></i>Laser</span>
+        <span><i class="leg-dot leg-echo"></i>Echo</span>
+      </div>
+      <button id="btn-close-map" class="primary-btn map-close-btn">CLOSE MAP [M / ESC]</button>
+    </div>
+  </div>
+
+  <!-- Mission Briefing Pop-up -->
+  <div id="briefing-modal" class="modal-screen hidden">
+    <div class="modal-card briefing-card">
+      <div class="station-tag">AETHER-9 // MISSION BRIEFING</div>
+      <h2 class="briefing-title">HOW TO ESCAPE THE 30-SECOND TIME LOOP</h2>
+      <p class="briefing-lead">
+        You have <strong>3 attempts (3 × 30 seconds)</strong> to escape AETHER-9. Every loop resets you to <strong>[S] Cryo-Pod Bay</strong>—while your <strong>memory, discovered sectors, and in-hand gear NEVER reset</strong>. After a reset, a glowing <strong>Echo Trail</strong> briefly shows your previous path!
+      </p>
+
+      <div class="briefing-grid">
+        <div class="briefing-box do-box">
+          <h3>✔ WHAT TO DO</h3>
+          <ul>
+            <li>Explore <strong>Sectors A–H</strong> (shuffled each new game) and press <kbd>E</kbd> at terminals.</li>
+            <li>Collect all 3 clues into your hands: <strong>Holo-Scanner</strong>, <strong>Security Code</strong>, and <strong>Quantum Keycard</strong>.</li>
+            <li>Enter the 4-digit code manually on the <strong>Blast Door Keypad</strong> (North Hub).</li>
+            <li>Follow the green <strong>Safe Route</strong> through the Reactor to launch the <strong>[E] Escape Pod</strong>.</li>
+          </ul>
+        </div>
+        <div class="briefing-box avoid-box">
+          <h3>✖ WHAT TO AVOID</h3>
+          <ul>
+            <li><strong>Red Laser Barriers</strong> — wait for the doorway strip to turn <strong>green</strong> before crossing.</li>
+            <li><strong>Hidden Plasma Mines</strong> — invisible in the Reactor until you scan Telemetry!</li>
+            <li><strong>Reactor Radiation Zones</strong> — glowing orange pylons along Reactor edges.</li>
+            <li><strong>4 Decoy Rooms</strong> — corrupted terminals with no mission data (marked red on radar).</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="briefing-controls-strip">
+        <span><kbd>WASD</kbd> Move</span>
+        <span><kbd>E</kbd> Interact / Keypad</span>
+        <span><kbd>M</kbd> Full Map</span>
+        <span><kbd>F</kbd> Fullscreen</span>
+        <span><kbd>R</kbd> Rewind</span>
+        <span><kbd>ESC</kbd> Pause</span>
+      </div>
+
+      <button id="btn-begin-loop" class="primary-btn">START MISSION [ENTER]</button>
+    </div>
+  </div>
+
+  <!-- Blast Door Manual Keypad Pop-up -->
+  <div id="keypad-modal" class="modal-screen hidden">
+    <div class="modal-card keypad-card">
+      <div class="station-tag">BLAST DOOR // SECURITY OVERRIDE</div>
+      <h2>ENTER 4-DIGIT CODE</h2>
+      <p id="keypad-status" class="keypad-status">Type on keyboard (0–9) or click keypad below</p>
+      <div id="keypad-display" class="keypad-display">_ _ _ _</div>
+
+      <div class="keypad-grid">
+        <button class="kp-btn kp-digit" data-digit="1">1</button>
+        <button class="kp-btn kp-digit" data-digit="2">2</button>
+        <button class="kp-btn kp-digit" data-digit="3">3</button>
+        <button class="kp-btn kp-digit" data-digit="4">4</button>
+        <button class="kp-btn kp-digit" data-digit="5">5</button>
+        <button class="kp-btn kp-digit" data-digit="6">6</button>
+        <button class="kp-btn kp-digit" data-digit="7">7</button>
+        <button class="kp-btn kp-digit" data-digit="8">8</button>
+        <button class="kp-btn kp-digit" data-digit="9">9</button>
+        <button id="kp-clear" class="kp-btn kp-fn">CLR</button>
+        <button class="kp-btn kp-digit" data-digit="0">0</button>
+        <button id="kp-enter" class="kp-btn kp-ok">ENTER</button>
+      </div>
+
+      <button id="kp-cancel" class="secondary-btn kp-cancel-btn">CLOSE [ESC]</button>
+    </div>
+  </div>
+
+  <!-- Start Screen -->
+  <div id="start-screen" class="modal-screen">
+    <div class="modal-card start-card">
+      <div class="station-tag">STATION AETHER-9 // ANOMALY DETECTED</div>
+      <h1 class="game-title">ESCAPE THE TIME LOOP</h1>
+      <div class="game-subtitle">YOU HAVE ONLY <span>30 SECONDS</span></div>
+      <p class="tagline">"Every loop resets the station. Nothing resets your memory."</p>
+
+      <div class="info-grid">
+        <div class="info-block">
+          <h3>MISSION GOAL</h3>
+          <p>You have only <strong>3 loop attempts (30s each)</strong>! Explore <strong>Sectors A–H</strong> (shuffled every game with 4 decoys), gather your <strong>Holo-Scanner</strong>, <strong>Security Code</strong>, and <strong>Quantum Keycard</strong>, unlock the <strong>Blast Door</strong>, and launch the <strong>Escape Rocket</strong> to Earth.</p>
+        </div>
+        <div class="info-block">
+          <h3>CONTROLS</h3>
+          <ul class="key-list">
+            <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or Arrows — Move Astronaut</li>
+            <li><kbd>E</kbd> — Interact / Keypad / Launch Pod</li>
+            <li><kbd>M</kbd> — Full Station Map &nbsp;|&nbsp; <kbd>F</kbd> — Fullscreen</li>
+            <li><kbd>R</kbd> — Manual Time Rewind (keeps memory!)</li>
+            <li><kbd>ESC</kbd> — Pause Mission / Close Pop-ups</li>
+          </ul>
+        </div>
+      </div>
+
+      <button id="btn-start" class="primary-btn">INITIATE MISSION</button>
+    </div>
+  </div>
+
+  <!-- Pause Screen -->
+  <div id="pause-screen" class="modal-screen hidden">
+    <div class="modal-card compact-card">
+      <div class="station-tag">TEMPORAL STASIS ACTIVE</div>
+      <h2>MISSION PAUSED</h2>
+      <p class="pause-note">Your astronaut memory core remains intact.</p>
+      <div class="btn-stack">
+        <button id="btn-resume" class="primary-btn">RESUME [ESC]</button>
+        <button id="btn-pause-rewind" class="secondary-btn">REWIND LOOP [R]</button>
+        <button id="btn-pause-restart" class="danger-btn">NEW SHUFFLED RUN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Victory Screen -->
+  <div id="victory-screen" class="modal-screen hidden">
+    <div class="modal-card victory-card">
+      <div class="station-tag success-tag">ESCAPE POD LAUNCHED // AETHER-9 CLEARED</div>
+      <h1 class="victory-title">TIME LOOP BROKEN!</h1>
+      <p class="victory-msg">"You escaped AETHER-9. Your memory was the key to breaking time."</p>
+
+      <div class="stats-row">
+        <div class="stat-box">
+          <span class="stat-label">TOTAL LOOPS USED</span>
+          <span id="victory-loops" class="stat-value">1</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">TOTAL TIME SPENT</span>
+          <span id="victory-time" class="stat-value">00:00</span>
+        </div>
+      </div>
+
+      <button id="btn-play-again" class="primary-btn">PLAY AGAIN (NEW SEED)</button>
+    </div>
+  </div>
+
+  <!-- Game Over Screen (All 3 Attempts Exhausted) -->
+  <div id="gameover-screen" class="modal-screen hidden">
+    <div class="modal-card gameover-card">
+      <div class="station-tag danger-tag">ALL 3 ATTEMPTS EXHAUSTED // AETHER-9 LOST</div>
+      <h1 class="gameover-title">TIME ANOMALY COLLAPSED!</h1>
+      <p id="gameover-reason" class="gameover-msg">You ran out of attempts before reaching the Escape Rocket.</p>
+
+      <div class="stats-row">
+        <div class="stat-box danger-stat">
+          <span class="stat-label">ATTEMPTS USED</span>
+          <span id="gameover-loops" class="stat-value">3 / 3</span>
+        </div>
+        <div class="stat-box danger-stat">
+          <span class="stat-label">TOTAL TIME SPENT</span>
+          <span id="gameover-time" class="stat-value">01:30</span>
+        </div>
+      </div>
+
+      <button id="btn-retry-mission" class="primary-btn">RETRY MISSION (NEW SEED)</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
